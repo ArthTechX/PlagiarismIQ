@@ -16,16 +16,20 @@ import sys
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 
-# Support both: `python app.py` and `gunicorn backend.app:app`
-try:
-    from backend.vectorizer import analyze   # gunicorn / package import
-except ImportError:
-    from vectorizer import analyze           # direct `python app.py`
+# Always insert backend/ dir so `from vectorizer import analyze` works
+# regardless of how gunicorn or python invokes the module.
+BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
+if BACKEND_DIR not in sys.path:
+    sys.path.insert(0, BACKEND_DIR)
 
-# Serve frontend from the sibling 'frontend' directory
-FRONTEND_DIR = os.path.join(os.path.dirname(__file__), "..", "frontend")
+from vectorizer import analyze  # noqa: E402 — must come after sys.path fix
 
-app = Flask(__name__, static_folder=FRONTEND_DIR, static_url_path="")
+# Absolute path to the frontend directory (sibling of backend/)
+FRONTEND_DIR = os.path.abspath(os.path.join(BACKEND_DIR, "..", "frontend"))
+
+# IMPORTANT: use static_url_path="/static" (NOT "") so Flask's
+# wildcard /<path:filename> route never shadows /api/* endpoints.
+app = Flask(__name__, static_folder=FRONTEND_DIR, static_url_path="/static")
 CORS(app)  # Allow cross-origin requests from the frontend
 
 
