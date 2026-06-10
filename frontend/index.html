@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PlagiarismIQ — Cosine Similarity Detector</title>
+  <meta name="description" content="Detect plagiarism with geometric precision using TF-IDF vectorization and cosine similarity. Get exact percentage of copied content between any two documents." />
+  <link rel="stylesheet" href="style.css" />
+  <!-- Favicon inline SVG -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%234f8ef7'/><text y='24' x='4' font-size='22'>🔍</text></svg>" />
+</head>
+<body>
+
+<div class="app-wrapper">
+
+  <!-- ================================================================
+       HEADER
+       ================================================================ -->
+  <header>
+    <div class="header-badge">
+      <span class="dot"></span>
+      Geometric Overlap Calculator
+    </div>
+    <h1>PlagiarismIQ</h1>
+    <p class="header-subtitle">
+      Vectorize documents with <strong>TF-IDF</strong>, compute the
+      <strong>cosine angle</strong> between spatial vectors, and get an
+      exact similarity percentage — mathematically transparent.
+    </p>
+  </header>
+
+  <!-- ================================================================
+       INPUT MODE TOGGLE
+       ================================================================ -->
+  <div class="mode-toggle" role="tablist" aria-label="Input mode">
+    <button id="mode-text" class="mode-btn active" onclick="setMode('text')" aria-selected="true">
+      ✏️ Paste Text
+    </button>
+    <button id="mode-file" class="mode-btn" onclick="setMode('file')" aria-selected="false">
+      📄 Upload Files
+    </button>
+  </div>
+
+  <!-- ================================================================
+       ERROR BANNER
+       ================================================================ -->
+  <div id="error-banner" class="error-banner" role="alert">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/>
+      <line x1="12" y1="16" x2="12.01" y2="16"/>
+    </svg>
+    <span id="error-msg">Something went wrong.</span>
+  </div>
+
+  <!-- ================================================================
+       DOCUMENT PANELS
+       ================================================================ -->
+  <div class="panels-grid">
+
+    <!-- Panel A -->
+    <div class="doc-panel" id="panel-a">
+      <div class="doc-panel-header">
+        <div class="doc-label">
+          <span class="doc-num doc-num-a">A</span>
+          Document A <span style="color:var(--text-muted);font-weight:400;font-size:.85rem">(source)</span>
+        </div>
+        <div class="doc-actions">
+          <button class="icon-btn" onclick="clearPanel('a')" title="Clear">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/>
+            </svg>
+          </button>
+          <button class="icon-btn" onclick="copyPanel('a')" title="Copy">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div id="doc-meta-a" class="doc-meta">0 words · 0 chars</div>
+
+      <!-- Text mode -->
+      <textarea id="text-a" class="doc-input" placeholder="Paste your first document here…" spellcheck="false"
+        oninput="updateMeta('a')" aria-label="Document A text input"></textarea>
+
+      <!-- File mode -->
+      <div id="drop-a" class="file-drop-zone" onclick="document.getElementById('file-a').click()"
+           ondragover="handleDragOver(event,'a')" ondragleave="handleDragLeave(event,'a')"
+           ondrop="handleDrop(event,'a')" role="button" tabindex="0" aria-label="Upload document A">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--accent-blue)" stroke-width="1.5">
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        <p>Drop a <strong>.txt</strong> file or <span>browse</span></p>
+        <div id="file-name-a" class="file-name hidden">No file selected</div>
+      </div>
+      <input type="file" id="file-a" accept=".txt,.md,.csv,.py,.js,.ts,.html,.java,.c,.cpp,.cs,.php,.rb,.go,.rs,.json"
+             onchange="handleFileSelect(event,'a')" aria-label="File input A" />
+    </div>
+
+    <!-- Panel B -->
+    <div class="doc-panel" id="panel-b">
+      <div class="doc-panel-header">
+        <div class="doc-label">
+          <span class="doc-num doc-num-b">B</span>
+          Document B <span style="color:var(--text-muted);font-weight:400;font-size:.85rem">(suspected copy)</span>
+        </div>
+        <div class="doc-actions">
+          <button class="icon-btn" onclick="clearPanel('b')" title="Clear">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/>
+            </svg>
+          </button>
+          <button class="icon-btn" onclick="copyPanel('b')" title="Copy">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div id="doc-meta-b" class="doc-meta">0 words · 0 chars</div>
+
+      <textarea id="text-b" class="doc-input" placeholder="Paste the suspected copy here…" spellcheck="false"
+        oninput="updateMeta('b')" aria-label="Document B text input"></textarea>
+
+      <div id="drop-b" class="file-drop-zone" onclick="document.getElementById('file-b').click()"
+           ondragover="handleDragOver(event,'b')" ondragleave="handleDragLeave(event,'b')"
+           ondrop="handleDrop(event,'b')" role="button" tabindex="0" aria-label="Upload document B">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--accent-violet)" stroke-width="1.5">
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        <p>Drop a <strong>.txt</strong> file or <span>browse</span></p>
+        <div id="file-name-b" class="file-name hidden">No file selected</div>
+      </div>
+      <input type="file" id="file-b" accept=".txt,.md,.csv,.py,.js,.ts,.html,.java,.c,.cpp,.cs,.php,.rb,.go,.rs,.json"
+             onchange="handleFileSelect(event,'b')" aria-label="File input B" />
+    </div>
+
+  </div><!-- /panels-grid -->
+
+  <!-- ================================================================
+       ANALYZE BUTTON
+       ================================================================ -->
+  <div class="analyze-section">
+    <button id="analyze-btn" class="analyze-btn" onclick="runAnalysis()" aria-label="Run plagiarism analysis">
+      <span class="btn-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <circle cx="11" cy="11" r="8"/>
+          <path d="M21 21l-4.35-4.35"/>
+          <line x1="11" y1="8" x2="11" y2="14"/>
+          <line x1="8" y1="11" x2="14" y2="11"/>
+        </svg>
+      </span>
+      <div class="spinner"></div>
+      Analyze Documents
+    </button>
+  </div>
+
+  <!-- ================================================================
+       RESULTS SECTION
+       ================================================================ -->
+  <section id="results-section" aria-live="polite">
+
+    <!-- Score hero -->
+    <div class="score-hero" id="score-hero">
+
+      <!-- Gauge -->
+      <div class="gauge-wrap" aria-label="Similarity gauge">
+        <svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
+          <circle class="gauge-track" cx="80" cy="80" r="65"/>
+          <circle id="gauge-fill" class="gauge-fill" cx="80" cy="80" r="65"/>
+        </svg>
+        <div class="gauge-center">
+          <span id="gauge-pct" class="gauge-pct">0%</span>
+          <span class="gauge-label">Similarity</span>
+        </div>
+      </div>
+
+      <!-- Text info -->
+      <div class="score-details">
+        <div id="verdict-text" class="score-verdict">—</div>
+        <div id="score-subtext" class="score-subtext">Run an analysis to see results.</div>
+        <div class="score-pills" id="score-pills"></div>
+      </div>
+
+      <!-- Cosine vector card -->
+      <div class="vector-card">
+        <div class="vector-card-label">Cosine Value</div>
+        <div id="cosine-raw" class="vector-card-value mono">—</div>
+        <div class="vector-card-label" style="margin-top:12px">Angle θ</div>
+        <div id="cosine-angle" class="vector-card-value mono" style="font-size:1.1rem">—</div>
+        <div class="vector-card-sub" id="angle-interp">cos(θ) = similarity</div>
+      </div>
+
+    </div>
+
+    <!-- Stats row -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-icon stat-icon-blue">📄</div>
+        <div id="stat-tokens-a" class="stat-value mono">—</div>
+        <div class="stat-label">Tokens in Doc A</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon stat-icon-violet">📄</div>
+        <div id="stat-tokens-b" class="stat-value mono">—</div>
+        <div class="stat-label">Tokens in Doc B</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon stat-icon-cyan">🔤</div>
+        <div id="stat-vocab" class="stat-value mono">—</div>
+        <div class="stat-label">Total Vocabulary</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon stat-icon-green">🔗</div>
+        <div id="stat-shared" class="stat-value mono">—</div>
+        <div class="stat-label">Shared Terms</div>
+      </div>
+    </div>
+
+    <!-- Result Tabs -->
+    <div class="result-tabs" role="tablist">
+      <button class="tab-btn active" id="tab-btn-terms"  onclick="showTab('terms')"  role="tab" aria-selected="true">🔑 Top Overlapping Terms</button>
+      <button class="tab-btn"        id="tab-btn-tfidf"  onclick="showTab('tfidf')"  role="tab" aria-selected="false">📊 TF-IDF Weight Table</button>
+      <button class="tab-btn"        id="tab-btn-math"   onclick="showTab('math')"   role="tab" aria-selected="false">📐 Math Explained</button>
+    </div>
+
+    <!-- Tab: Top Terms -->
+    <div id="tab-terms" class="tab-content active" role="tabpanel">
+      <div id="terms-grid" class="terms-grid"></div>
+    </div>
+
+    <!-- Tab: TF-IDF Table -->
+    <div id="tab-tfidf" class="tab-content" role="tabpanel">
+      <div class="table-wrap">
+        <div class="table-toolbar">
+          <div class="table-search">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2">
+              <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+            </svg>
+            <input type="text" id="table-search-input" placeholder="Search terms…"
+                   oninput="filterTable()" aria-label="Search terms in table"/>
+          </div>
+          <div class="filter-chips">
+            <button class="chip active" id="chip-all"    onclick="setFilter('all')"   >All</button>
+            <button class="chip"        id="chip-shared" onclick="setFilter('shared')" >Shared</button>
+            <button class="chip"        id="chip-unique" onclick="setFilter('unique')" >Unique</button>
+          </div>
+        </div>
+        <div style="max-height:420px;overflow-y:auto">
+          <table id="tfidf-table" aria-label="TF-IDF weights table">
+            <thead>
+              <tr>
+                <th>Term</th>
+                <th>Weight — Doc A</th>
+                <th>Weight — Doc B</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="tfidf-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: Math Explained -->
+    <div id="tab-math" class="tab-content" role="tabpanel">
+      <div class="math-panel">
+        <div class="math-panel-header">
+          📐 How the Calculation Works
+        </div>
+        <div class="math-panel-body">
+
+          <div class="math-step">
+            <div class="math-step-num">1</div>
+            <div class="math-step-content">
+              <h4>Tokenization & Preprocessing</h4>
+              <p>Each document is lowercased, stripped of punctuation, split into tokens, and filtered through a stop-word list. Only meaningful content words remain.</p>
+              <div class="math-formula">tokens = [w for w in words if w not in STOP_WORDS and len(w) &gt; 1]</div>
+            </div>
+          </div>
+
+          <div class="math-step">
+            <div class="math-step-num">2</div>
+            <div class="math-step-content">
+              <h4>Term Frequency (TF)</h4>
+              <p>For each document, we calculate the normalised frequency of every term — how often it appears relative to the total token count.</p>
+              <div class="math-formula">TF(t, d) = count(t in d) / |d|</div>
+            </div>
+          </div>
+
+          <div class="math-step">
+            <div class="math-step-num">3</div>
+            <div class="math-step-content">
+              <h4>Inverse Document Frequency (IDF)</h4>
+              <p>IDF down-weights terms that appear in many documents (common words) and up-weights rare, distinctive terms. We use the smooth variant from scikit-learn.</p>
+              <div class="math-formula">IDF(t) = log( (1 + N) / (1 + df(t)) ) + 1</div>
+            </div>
+          </div>
+
+          <div class="math-step">
+            <div class="math-step-num">4</div>
+            <div class="math-step-content">
+              <h4>TF-IDF Vectors</h4>
+              <p>Each document becomes a high-dimensional numeric vector where each dimension corresponds to a vocabulary term and its value is TF × IDF. This is the document's "fingerprint" in vector space.</p>
+              <div class="math-formula">TF-IDF(t, d) = TF(t, d) × IDF(t)</div>
+            </div>
+          </div>
+
+          <div class="math-step">
+            <div class="math-step-num">5</div>
+            <div class="math-step-content">
+              <h4>Cosine Similarity</h4>
+              <p>We measure the cosine of the angle θ between the two TF-IDF vectors. A value of 1 (θ = 0°) means identical, 0 (θ = 90°) means no overlap whatsoever.</p>
+              <div class="math-formula">cos(θ) = (A · B) / (||A|| × ||B||)&nbsp;&nbsp;&nbsp;&nbsp;∈ [0, 1]</div>
+            </div>
+          </div>
+
+          <div class="math-step">
+            <div class="math-step-num">6</div>
+            <div class="math-step-content">
+              <h4>Similarity Percentage</h4>
+              <p>The final similarity percentage is simply the cosine value multiplied by 100. The cosine angle θ is derived via arccos and shown in degrees for geometric intuition.</p>
+              <div class="math-formula">Similarity% = cos(θ) × 100&nbsp;&nbsp;&nbsp;&nbsp;θ = arccos(cos(θ))</div>
+            </div>
+          </div>
+
+          <!-- Live values panel -->
+          <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:20px;margin-top:8px">
+            <div style="font-size:.8rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);margin-bottom:12px">
+              Live Computation Values
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px" id="math-live-values">
+              <div>
+                <div style="font-size:.75rem;color:var(--text-muted)">Dot Product (A·B)</div>
+                <div id="lv-dot" class="mono" style="font-size:1.1rem;font-weight:700;color:var(--text-primary)">—</div>
+              </div>
+              <div>
+                <div style="font-size:.75rem;color:var(--text-muted)">||A|| magnitude</div>
+                <div id="lv-mag-a" class="mono" style="font-size:1.1rem;font-weight:700;color:var(--accent-blue)">—</div>
+              </div>
+              <div>
+                <div style="font-size:.75rem;color:var(--text-muted)">||B|| magnitude</div>
+                <div id="lv-mag-b" class="mono" style="font-size:1.1rem;font-weight:700;color:var(--accent-violet)">—</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </section><!-- /results-section -->
+
+</div><!-- /app-wrapper -->
+
+<footer>
+  <p>PlagiarismIQ · TF-IDF + Cosine Similarity Engine &middot; Built with pure Python &amp; vanilla JS</p>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>

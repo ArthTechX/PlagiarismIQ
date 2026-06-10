@@ -1,0 +1,53 @@
+version: "3.9"
+
+# ============================================================
+# docker-compose.yml — PlagiarismIQ
+#
+# Services:
+#   web   — Flask API served by gunicorn (port 8000, internal)
+#   nginx — Reverse proxy + static files  (port 80, public)
+# ============================================================
+
+services:
+
+  # ── Flask / Gunicorn API ────────────────────────────────────────
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: plagiarismiq_web
+    restart: unless-stopped
+    environment:
+      - FLASK_ENV=production
+      - PORT=8000
+    expose:
+      - "8000"
+    networks:
+      - app_net
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ── nginx Reverse Proxy ─────────────────────────────────────────
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: plagiarismiq_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"          # HTTP  — change to "443:443" after adding SSL
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro      # config
+      - ./frontend:/usr/share/nginx/html:ro              # static files
+    depends_on:
+      web:
+        condition: service_healthy
+    networks:
+      - app_net
+
+networks:
+  app_net:
+    driver: bridge
