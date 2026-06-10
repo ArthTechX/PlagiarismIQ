@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: plagiarismiq
+    runtime: python
+    buildCommand: "pip install -r backend/requirements.txt"
+    startCommand: "gunicorn --workers 4 --bind 0.0.0.0:$PORT --timeout 60 backend.app:app"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: FLASK_ENV
+        value: production
+    healthCheckPath: /api/health
